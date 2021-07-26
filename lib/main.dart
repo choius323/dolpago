@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path/path.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -33,6 +32,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<int> savedGoal = [7, 7, 4]; // 기본 목표 각인
   List<int> goal = [7, 7, 4]; // 목표 각인(자동 변환 포함)
+  List<int> curHit = [0, 0, 0];
 
   int numAttempts = 10; // 시도 횟수 개수(3티어 유물:10,전설:9,영웅:8,희귀:7)
   bool isAutoAdjust = true;
@@ -52,20 +52,23 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     return Scaffold(
       appBar: AppBar(
         title: Text('돌파고'),
       ),
       body: Container(
-        padding: EdgeInsets.only(left: 40, right: 20, top: 30),
+        padding: EdgeInsets.only(left: 40, right: 40, top: 30),
         child: Column(
           children: [
             Text("$info"),
             Row(
               children: [
-                Text("      $curProb" + "%      "),
+                Text("현재 확률 : $curProb" + "%      "),
                 OutlinedButton(onPressed: reset, child: Text('리셋')),
-                SizedBox(width: 20,),
+                SizedBox(
+                  width: 20,
+                ),
                 OutlinedButton(onPressed: undo, child: Text('취소')),
                 // Text("${toPercent(cur_prob)}   "),
               ],
@@ -120,11 +123,16 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             ),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // 목표 세공 조절
-                savedGoalButtons(1),
-                savedGoalButtons(2),
-                savedGoalButtons(3),
+                Row(
+                  children: [
+                    savedGoalButtons(1),
+                    savedGoalButtons(2),
+                    savedGoalButtons(3),
+                  ],
+                ),
                 // 세공 횟수 조절
                 DropdownButtonHideUnderline(
                     child: DropdownButton(
@@ -218,13 +226,25 @@ class _MyHomePageState extends State<MyHomePage> {
                 Text("${abilityText[idx - 1]}"),
               ],
             ),
-            SizedBox(height: 10,),
-            Text(
-              "${abilitySym[idx - 1]}",
-              style: TextStyle(fontFamily: 'Noto_Sans_KR'),
+            SizedBox(
+              height: 10,
             ),
-            SizedBox(height: 10,),
-            Row(mainAxisSize: MainAxisSize.max,mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "${abilitySym[idx - 1]}",
+                  style: TextStyle(fontFamily: 'Noto_Sans_KR'),
+                ),
+                Text('${curHit[idx - 1]}'),
+              ],
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.max,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 OutlinedButton(
                     onPressed: () => doAttempt(idx, 1), child: Text('성공')),
@@ -331,19 +351,12 @@ class _MyHomePageState extends State<MyHomePage> {
     double maxProb = max<double>(max<double>(prob[0], prob[1]), prob[2]);
 
     setState(() {
-      abilitySym[0] = build_sym_from_seq(1);
-      abilitySym[1] = build_sym_from_seq(2);
-      abilitySym[2] = build_sym_from_seq(3);
-
-      abilityProb[0] = prob[0] * 100;
-      abilityProb[1] = prob[1] * 100;
-      abilityProb[2] = prob[2] * 100;
-      // print(ability_sym.toString() + ability_prob.toString());
-
-      abilityText[0] = prob[0] == maxProb && prob[0] != 0 ? "추천!" : "";
-      abilityText[1] = prob[1] == maxProb && prob[1] != 0 ? "추천!" : "";
-      abilityText[2] = prob[2] == maxProb && prob[2] != 0 ? "추천!" : "";
-
+      for (int i = 0; i < 3; i++) {
+        curHit[i] = editCurHit(i + 1);
+        abilitySym[i] = build_sym_from_seq(i + 1);
+        abilityProb[i] = prob[i] * 100;
+        abilityText[i] = prob[i] == maxProb && prob[i] != 0 ? "추천!" : "";
+      }
       goalStr = '${goal[0]}/${goal[1]}/${goal[2]}';
     });
   }
@@ -422,8 +435,21 @@ class _MyHomePageState extends State<MyHomePage> {
     return p;
   }
 
+  int editCurHit(idx) {
+    int cnt = 0;
+    seq.forEach((attempt) {
+      if (attempt[0] == idx && attempt[1] == 1) {
+        print(attempt);
+        cnt++;
+      }
+    });
+    return cnt;
+  }
+
+  // 현재 세공 상황 표시
   String build_sym_from_seq(idx) {
-    dynamic sym = "", cnt = 0;
+    String sym = "";
+    int cnt = 0;
     seq.forEach((attempt) {
       if (attempt[0] == idx) {
         sym += attempt[1] == 0 ? "×   " : "◆   ";
@@ -486,6 +512,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void reset() {
     seq = [];
     goal = savedGoal.toList();
+    curHit = [0, 0, 0];
     print(savedGoal.toString());
     adjustGoal();
   }
